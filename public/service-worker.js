@@ -3,7 +3,7 @@
  * Handles caching, offline support, and service worker lifecycle
  */
 
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
 const CACHE_NAME = `ithelp-desk-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ithelp-desk-runtime-${CACHE_VERSION}`;
 const API_CACHE = `ithelp-desk-api-${CACHE_VERSION}`;
@@ -96,8 +96,10 @@ self.addEventListener('fetch', (event) => {
         return response || fetch(request).then((response) => {
           // Cache successful navigations
           if (response.status === 200) {
-            const cache = caches.open(RUNTIME_CACHE);
-            cache.then((c) => c.put(request, response.clone()));
+            const responseToCache = response.clone();
+            caches.open(RUNTIME_CACHE)
+              .then((cache) => cache.put(request, responseToCache))
+              .catch((error) => console.error('Failed to cache navigation:', error));
           }
           return response;
         }).catch(() => {
@@ -115,8 +117,10 @@ self.addEventListener('fetch', (event) => {
       return response || fetch(request).then((response) => {
         // Cache successful responses
         if (response.status === 200 && response.type !== 'error') {
-          const cache = caches.open(RUNTIME_CACHE);
-          cache.then((c) => c.put(request, response.clone()));
+          const responseToCache = response.clone();
+          caches.open(RUNTIME_CACHE)
+            .then((cache) => cache.put(request, responseToCache))
+            .catch((error) => console.error('Failed to cache resource:', error));
         }
         return response;
       }).catch((error) => {
@@ -234,14 +238,16 @@ function networkThenCache(request, config) {
     })
     .catch(() => {
       // Try cache on network failure
-      return caches.open(API_CACHE).then((cache) => {
-        return cache.match(request) || new Response(JSON.stringify({ 
-          error: 'Offline - Data not available' 
-        }), {
+      return caches.open(API_CACHE)
+        .then((cache) => cache.match(request))
+        .then((cachedResponse) => {
+          return cachedResponse || new Response(JSON.stringify({
+            error: 'Offline - Data not available',
+          }), {
           status: 503,
           headers: new Headers({ 'Content-Type': 'application/json' }),
         });
-      });
+        });
     });
 }
 

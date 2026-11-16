@@ -15,25 +15,25 @@ export class QuickReplyService {
   private quickReplies: QuickReply[] = [
     {
       id: 'help-1',
-      text: 'How do I reset my password?',
+      text: 'Auto Cleaning',
       icon: 'lock_reset',
       category: 'help',
     },
     {
       id: 'help-2',
-      text: 'I need technical support',
+      text: 'Shell',
       icon: 'support_agent',
       category: 'help',
     },
     {
       id: 'report-1',
-      text: 'Report a system issue',
+      text: 'IT_Optimizer_Tool',
       icon: 'bug_report',
       category: 'report',
     },
     {
       id: 'report-2',
-      text: 'Request IT maintenance',
+      text: 'WPU',
       icon: 'construction',
       category: 'report',
     },
