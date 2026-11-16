@@ -1,0 +1,348 @@
+<div class="ticket-form-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header">
+          <mat-icon>{{ isEditMode ? "edit" : "add" }}</mat-icon>
+          <h2>{{ isEditMode ? "Edit Ticket" : "Create New Request" }}</h2>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="ticketForm" (ngSubmit)="onSubmit()">
+        <div class="form-grid">
+          <!-- Image Upload Section -->
+          <div class="image-upload-section full-width">
+            <label class="upload-label">
+              Photo (Optional) - Max 20MB, JPEG or PNG only
+            </label>
+            <div class="image-upload-container">
+              <!-- File Input (hidden) -->
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png"
+                (change)="onFileSelected($event)"
+                #fileInput
+                style="display: none"
+              />
+
+              <!-- Upload Options (when no image) -->
+              <div
+                class="upload-options"
+                *ngIf="!imagePreview && !isCameraOpen"
+              >
+                <button
+                  mat-raised-button
+                  type="button"
+                  (click)="openCamera()"
+                  class="camera-btn"
+                >
+                  <mat-icon>photo_camera</mat-icon>
+                  Take Photo
+                </button>
+                <button
+                  mat-raised-button
+                  type="button"
+                  (click)="fileInput.click()"
+                  class="upload-btn"
+                >
+                  <mat-icon>upload_file</mat-icon>
+                  Upload Photo
+                </button>
+              </div>
+
+              <!-- Camera View -->
+              <div class="camera-container" *ngIf="isCameraOpen">
+                <video
+                  id="cameraVideo"
+                  autoplay
+                  playsinline
+                  class="camera-video"
+                ></video>
+                <div class="camera-controls">
+                  <button
+                    mat-fab
+                    color="primary"
+                    type="button"
+                    (click)="capturePhoto()"
+                    class="capture-btn"
+                  >
+                    <mat-icon>camera</mat-icon>
+                  </button>
+                  <button
+                    mat-raised-button
+                    type="button"
+                    (click)="stopCamera()"
+                    class="cancel-camera-btn"
+                  >
+                    <mat-icon>close</mat-icon>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+              <!-- Image Preview -->
+              <div class="image-preview" *ngIf="imagePreview">
+                <img [src]="imagePreview" alt="Ticket image" />
+                <button
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  (click)="removeImage()"
+                  class="remove-image-btn"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subject -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Subject</mat-label>
+            <mat-select formControlName="subject" required>
+              <mat-option value="">Select an issue type</mat-option>
+              <mat-option *ngFor="let subject of subjectOptions" [value]="subject">
+                {{ subject }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>category</mat-icon>
+            <mat-error *ngIf="ticketForm.get('subject')?.hasError('required')">
+              Subject is required
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Asset Selection Row with Branch Filter -->
+          <div class="asset-selection-row">
+            <!-- Branch Filter for Admin/IT/Supervisor -->
+            <mat-form-field
+              appearance="outline"
+              class="branch-filter-field"
+              *ngIf="
+                (authService.isAdmin() ||
+                  authService.isSupervisor() ||
+                  authService.isTechnician()) &&
+                !loadingAssets &&
+                assets.length > 0
+              "
+            >
+              <mat-label>Filter by Branch</mat-label>
+              <mat-select
+                [(ngModel)]="selectedBranchId"
+                (ngModelChange)="filterAssetsByBranch()"
+                [ngModelOptions]="{ standalone: true }"
+              >
+                <mat-option [value]="null">All Branches</mat-option>
+                <mat-option
+                  *ngFor="let branch of branches"
+                  [value]="branch.branch_id"
+                >
+                  {{ branch.branch_name }}
+                </mat-option>
+              </mat-select>
+              <mat-icon matSuffix>filter_list</mat-icon>
+              <mat-hint *ngIf="selectedBranchId">
+                {{ filteredAssets.length }} assets
+              </mat-hint>
+              <mat-hint *ngIf="!selectedBranchId">
+                All {{ assets.length }} assets
+              </mat-hint>
+            </mat-form-field>
+
+            <!-- Asset Selection -->
+            <mat-form-field
+              appearance="outline"
+              class="asset-select-field"
+              [class.full-width]="
+                authService.isUser() || loadingAssets || assets.length === 0
+              "
+            >
+              <mat-label>Relatmed Asset (Required)</mat-label>
+              <mat-select
+                formControlName="asset_id"
+                required
+                [disabled]="loadingAssets"
+              >
+                <mat-option [value]="null" *ngIf="!loadingAssets">
+                  {{
+                    filteredAssets.length === 0 && selectedBranchId
+                      ? "No assets in selected branch"
+                      : assets.length === 0
+                        ? "No assets available"
+                        : "Select an asset"
+                  }}
+                </mat-option>
+                <mat-option [value]="null" *ngIf="loadingAssets">
+                  Loading assets...
+                </mat-option>
+
+                <!-- Grouped dropdown for Admin/IT/Supervisor -->
+                <ng-container
+                  *ngIf="
+                    (authService.isAdmin() ||
+                      authService.isSupervisor() ||
+                      authService.isTechnician()) &&
+                    !loadingAssets &&
+                    filteredAssets.length > 0
+                  "
+                >
+                  <mat-optgroup
+                    *ngFor="let branchName of getBranchNames()"
+                    [label]="branchName"
+                  >
+                    <mat-option
+                      *ngFor="
+                        let asset of selectedBranchId
+                          ? filteredAssetsByBranch[branchName]
+                          : assetsByBranch[branchName]
+                      "
+                      [value]="asset.asset_id"
+                    >
+                      {{ asset.asset_tag }} - {{ asset.assignedEmployee?.first_name || "Unassigned" }} {{ asset.assignedEmployee?.last_name || "" }}
+                    </mat-option>
+                  </mat-optgroup>
+                </ng-container>
+
+                <!-- Simple dropdown for regular employees -->
+                <ng-container
+                  *ngIf="
+                    authService.isUser() &&
+                    !loadingAssets &&
+                    filteredAssets.length > 0 
+                  "
+                >
+                  <mat-option
+                    *ngFor="let asset of filteredAssets"
+                    [value]="asset.asset_id"
+                  >
+                    {{ asset.asset_tag }} - {{ asset.category || "Unknown category" }} 
+                  </mat-option>
+                </ng-container>
+              </mat-select>
+              <mat-icon matSuffix *ngIf="loadingAssets">
+                <span class="spinner"></span>
+              </mat-icon>
+              <mat-icon matSuffix *ngIf="!loadingAssets">devices</mat-icon>
+              <mat-error
+                *ngIf="ticketForm.get('asset_id')?.hasError('required')"
+              >
+                Asset selection is required
+              </mat-error>
+              <mat-hint *ngIf="authService.isUser() && assets.length > 0">
+                Showing assets from your branch only
+              </mat-hint>
+              <mat-hint
+                *ngIf="
+                  (authService.isAdmin() ||
+                    authService.isSupervisor() ||
+                    authService.isTechnician()) &&
+                  assets.length > 0
+                "
+              >
+                Showing all assets from all branches
+              </mat-hint>
+              <mat-hint *ngIf="assets.length === 0 && !loadingAssets">
+                No assets found.
+                <button
+                  type="button"
+                  mat-button
+                  color="primary"
+                  (click)="loadAllAssets()"
+                  style="
+                    text-decoration: underline;
+                    padding: 0;
+                    min-width: auto;
+                  "
+                >
+                  Try loading all assets
+                </button>
+              </mat-hint>
+            </mat-form-field>
+          </div>
+
+          <!-- Category and Priority Row -->
+          <div class="category-priority-row">
+            <!-- Priority -->
+            <mat-form-field appearance="outline">
+              <mat-label>Priority</mat-label>
+              <mat-select formControlName="priority">
+                <mat-option
+                  *ngFor="let priority of priorityOptions"
+                  [value]="priority"
+                >
+                  {{ priority | titlecase }}
+                </mat-option>
+              </mat-select>
+              <mat-icon matSuffix>flag</mat-icon>
+              <mat-error
+                *ngIf="ticketForm.get('priority')?.hasError('required')"
+              >
+                Priority is required
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Category -->
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <mat-select formControlName="category">
+                <mat-option
+                  *ngFor="let category of categoryOptions"
+                  [value]="category"
+                >
+                  {{ category | titlecase }}
+                </mat-option>
+              </mat-select>
+              <mat-icon matSuffix>category</mat-icon>
+              <mat-error
+                *ngIf="ticketForm.get('category')?.hasError('required')"
+              >
+                Category is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Approval Checkbox -->
+          <div class="approval-checkbox-section full-width">
+            <mat-checkbox formControlName="require_approval" color="primary">
+              <span class="checkbox-label">Requires Supervisor Approval</span>
+            </mat-checkbox>
+            <p class="checkbox-hint">Uncheck for urgent tickets to skip supervisor review</p>
+          </div>
+
+          <!-- Description -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <mat-select formControlName="description" required>
+              <mat-option value="">Select issue description</mat-option>
+              <mat-option *ngFor="let desc of descriptionOptions" [value]="desc">
+                {{ desc }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>info</mat-icon>
+            <mat-error
+              *ngIf="ticketForm.get('description')?.hasError('required')"
+            >
+              Description is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <button mat-raised-button type="button" (click)="cancel()">
+            Cancel
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            [disabled]="loading || ticketForm.invalid"
+          >
+            <mat-icon>{{ isEditMode ? "save" : "add" }}</mat-icon>
+            {{ isEditMode ? "Update" : "Submit" }} Request
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

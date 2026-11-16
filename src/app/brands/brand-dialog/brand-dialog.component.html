@@ -1,0 +1,76 @@
+<h2 mat-dialog-title>{{ isEditMode ? "Edit Brand" : "Add New Brand" }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="brandForm" (ngSubmit)="onSubmit()">
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Brand Name</mat-label>
+        <mat-icon matPrefix>label</mat-icon>
+        <input
+          matInput
+          formControlName="brand_name"
+          placeholder="Enter brand name"
+          required
+        />
+        <mat-error *ngIf="brandForm.get('brand_name')?.invalid">
+          {{ getErrorMessage("brand_name") }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Description</mat-label>
+        <mat-icon matPrefix>description</mat-icon>
+        <textarea
+          matInput
+          formControlName="description"
+          placeholder="Enter brand description"
+          rows="3"
+        ></textarea>
+        <mat-error *ngIf="brandForm.get('description')?.invalid">
+          {{ getErrorMessage("description") }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Brand Image URL</mat-label>
+        <mat-icon matPrefix>image</mat-icon>
+        <input
+          matInput
+          formControlName="brand_image_url"
+          placeholder="https://example.com/logo.png"
+          type="url"
+        />
+        <mat-error *ngIf="brandForm.get('brand_image_url')?.invalid">
+          {{ getErrorMessage("brand_image_url") }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-slide-toggle formControlName="status" color="primary">
+        {{ brandForm.get("status")?.value ? "Active" : "Inactive" }}
+      </mat-slide-toggle>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">
+    Cancel
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    (click)="onSubmit()"
+    [disabled]="brandForm.invalid || isSaving"
+  >
+    <mat-spinner *ngIf="isSaving" diameter="20"></mat-spinner>
+    <mat-icon *ngIf="!isSaving">save</mat-icon>
+    {{ isSaving ? "Saving..." : isEditMode ? "Update" : "Create" }}
+  </button>
+</mat-dialog-actions>

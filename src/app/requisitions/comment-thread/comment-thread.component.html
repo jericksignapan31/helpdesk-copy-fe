@@ -1,0 +1,87 @@
+<mat-card class="comment-thread-card">
+  <mat-card-header>
+    <mat-card-title>Discussion Thread</mat-card-title>
+    <mat-card-subtitle>Comments between IT and Warehouse staff</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- Loading State -->
+    <div *ngIf="loadingComments" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading comments...</p>
+    </div>
+
+    <!-- Comments Table -->
+    <div *ngIf="!loadingComments && comments.length > 0" class="comments-table-container">
+      <table mat-table [dataSource]="comments" class="comments-table">
+        <!-- Role Column -->
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Role</th>
+          <td mat-cell *matCellDef="let comment">
+            <span
+              class="role-badge"
+              [style.background-color]="getRoleColor(comment.role)"
+            >
+              {{ getRoleLabel(comment.role) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Timestamp Column -->
+        <ng-container matColumnDef="timestamp">
+          <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+          <td mat-cell *matCellDef="let comment">{{ formatDate(comment.created_at) }}</td>
+        </ng-container>
+
+        <!-- Message Column -->
+        <ng-container matColumnDef="message">
+          <th mat-header-cell *matHeaderCellDef>Comment</th>
+          <td mat-cell *matCellDef="let comment">{{ comment.message }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <!-- No Comments -->
+    <div *ngIf="!loadingComments && comments.length === 0" class="no-comments">
+      <mat-icon>chat_bubble_outline</mat-icon>
+      <p>No comments yet. Start the discussion!</p>
+    </div>
+
+    <!-- Add Comment Form -->
+    <mat-divider class="form-divider"></mat-divider>
+
+    <form [formGroup]="form" (ngSubmit)="addComment()" class="add-comment-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Add a Comment</mat-label>
+        <textarea
+          matInput
+          formControlName="message"
+          placeholder="Share your thoughts or feedback..."
+          rows="3"
+        ></textarea>
+        <mat-hint align="end">Minimum 5 characters</mat-hint>
+        <mat-error *ngIf="form.get('message')?.hasError('required')">
+          Comment is required
+        </mat-error>
+        <mat-error *ngIf="form.get('message')?.hasError('minlength')">
+          Minimum 5 characters required
+        </mat-error>
+      </mat-form-field>
+
+      <button
+        type="submit"
+        mat-raised-button
+        color="primary"
+        [disabled]="isFormInvalid()"
+        class="submit-btn"
+      >
+        <mat-icon *ngIf="!loading">send</mat-icon>
+        <mat-icon *ngIf="loading">schedule</mat-icon>
+        {{ loading ? 'Posting...' : 'Post Comment' }}
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>

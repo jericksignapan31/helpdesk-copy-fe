@@ -1,0 +1,257 @@
+.inventory-dashboard-container {
+  padding: 20px;
+  background: white;
+  min-height: 100vh;
+
+  .header-card {
+    margin-bottom: 20px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    mat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 0;
+
+      .header-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: var(--color-accent-rose);
+      }
+
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      mat-card-subtitle {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 14px;
+      }
+    }
+  }
+
+  .filters-card {
+    margin-bottom: 20px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    mat-card-header {
+      margin-bottom: 15px;
+
+      mat-card-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+    }
+
+    mat-card-content {
+      padding: 0;
+    }
+
+    .filters-container {
+      display: flex;
+      gap: 15px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    align-items: center;
+      .filter-field {
+        flex: 1;
+        min-width: 160px;
+      }
+    }
+  }
+
+  .stats-card {
+    margin-bottom: 20px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    mat-card-content {
+      padding: 20px;
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+
+      .stat-item {
+        background: var(--color-bg-page);
+        color: var(--color-text-primary);
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        border-left: 4px solid var(--color-accent-teal);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+        .stat-label {
+          font-size: 14px;
+          opacity: 0.9;
+          margin-bottom: 8px;
+        }
+
+        .stat-value {
+          font-size: 24px;
+          font-weight: bold;
+        }
+      }
+    }
+  }
+
+  .content-card {
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+
+    mat-card-content {
+      padding: 20px;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 20px;
+
+    p {
+      color: var(--color-text-secondary);
+      font-size: 16px;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 15px;
+    color: var(--color-text-muted);
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      opacity: 0.5;
+    }
+
+    p {
+      font-size: 16px;
+    }
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+
+    .inventory-table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th {
+        background-color: var(--color-bg-page);
+        font-weight: 600;
+        text-align: left;
+        padding: 16px;
+        border-bottom: 2px solid var(--color-border);
+      }
+
+      td {
+        padding: 16px;
+        border-bottom: 1px solid var(--color-border-light);
+      }
+
+      tr:hover {
+        background-color: var(--color-bg-subtle);
+      }
+
+      .quantity-chip {
+        background-color: var(--color-accent-rose);
+        color: white;
+        font-weight: 600;
+      }
+
+      .status-chip {
+        color: white;
+        font-weight: 600;
+
+        &.status-pending {
+          background-color: var(--color-warning);
+        }
+
+        &.status-pending_admin_review {
+          background-color: var(--color-info);
+        }
+
+        &.status-approved {
+          background-color: var(--color-success);
+        }
+
+        &.status-rejected {
+          background-color: var(--color-danger);
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .inventory-dashboard-container {
+    padding: 10px;
+
+    .header-card {
+      margin-bottom: 10px;
+
+      mat-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+
+        mat-card-title {
+          font-size: 20px;
+        }
+      }
+    }
+
+    .filters-card {
+      .filters-container {
+        flex-direction: column;
+            align-items: center;
+
+        .filter-field {
+          width: 100%;
+        }
+
+        .clear-btn {
+          width: 100%;
+        }
+      }
+    }
+
+    .stats-card {
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .table-wrapper {
+      .inventory-table {
+        th,
+        td {
+          padding: 10px;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}

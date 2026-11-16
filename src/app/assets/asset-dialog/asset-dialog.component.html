@@ -1,0 +1,417 @@
+<h2 mat-dialog-title>
+  <mat-icon>inventory_2</mat-icon>
+  {{ isEditMode ? "Edit Asset" : "Add New Asset" }}
+</h2>
+
+<mat-dialog-content>
+  <!-- Form Section -->
+  <div *ngIf="!showQRCode">
+    <form [formGroup]="assetForm" class="asset-form">
+      <mat-tab-group>
+        <!-- Tab 1: Basic Information -->
+        <mat-tab label="Basic Information">
+          <div class="tab-content">
+            <div class="form-grid">
+              <!-- Asset Tag -->
+              <mat-form-field appearance="outline">
+                <mat-label>Asset Tag</mat-label>
+                <mat-icon matPrefix>tag</mat-icon>
+                <input
+                  matInput
+                  formControlName="asset_tag"
+                  placeholder="e.g., LAP-0001-20260520"
+                  [disabled]="true"
+                />
+                <mat-hint *ngIf="!isEditMode">Auto-generated based on asset type</mat-hint>
+                <mat-hint *ngIf="isEditMode">Asset tag cannot be changed</mat-hint>
+                <mat-error
+                  *ngIf="assetForm.get('asset_tag')?.hasError('required')"
+                >
+                  Asset tag is required
+                </mat-error>
+                <mat-error
+                  *ngIf="assetForm.get('asset_tag')?.hasError('maxlength')"
+                >
+                  Maximum 50 characters
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Asset Type -->
+              <mat-form-field appearance="outline">
+                <mat-label>Asset Type</mat-label>
+                <mat-icon matPrefix>category</mat-icon>
+                <mat-select formControlName="category">
+                  <mat-option *ngFor="let type of assetTypes" [value]="type">
+                    {{ type }}
+                  </mat-option>
+                </mat-select>
+                <mat-error
+                  *ngIf="assetForm.get('category')?.hasError('required')"
+                >
+                  Type is required
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Brand -->
+              <mat-form-field appearance="outline">
+                <mat-label>Brand</mat-label>
+                <mat-icon matPrefix>business</mat-icon>
+                <mat-select formControlName="brand_id">
+                  <mat-option value="">None</mat-option>
+                  <mat-option *ngFor="let brand of brands" [value]="brand.id">
+                    {{ brand.brand_name }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Model -->
+              <mat-form-field appearance="outline">
+                <mat-label>Model</mat-label>
+                <mat-icon matPrefix>devices</mat-icon>
+                <input
+                  matInput
+                  formControlName="model"
+                  placeholder="e.g., ThinkPad X1"
+                />
+                <mat-error *ngIf="assetForm.get('model')?.hasError('required')">
+                  Model is required
+                </mat-error>
+                <mat-error
+                  *ngIf="assetForm.get('model')?.hasError('maxlength')"
+                >
+                  Maximum 100 characters
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Serial Number -->
+              <mat-form-field appearance="outline">
+                <mat-label>Serial Number</mat-label>
+                <mat-icon matPrefix>pin</mat-icon>
+                <input
+                  matInput
+                  formControlName="serial_number"
+                  placeholder="Optional"
+                />
+                <mat-error
+                  *ngIf="assetForm.get('serial_number')?.hasError('maxlength')"
+                >
+                  Maximum 100 characters
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Status -->
+              <mat-form-field appearance="outline">
+                <mat-label>Status</mat-label>
+                <mat-icon matPrefix>circle</mat-icon>
+                <mat-select formControlName="status">
+                  <mat-option
+                    *ngFor="let status of statusOptions"
+                    [value]="status"
+                  >
+                    {{ status }}
+                  </mat-option>
+                </mat-select>
+                <mat-error
+                  *ngIf="assetForm.get('status')?.hasError('required')"
+                >
+                  Status is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Tab 2: Network Configuration (Desktop/Laptop only) -->
+        <mat-tab label="Network Configuration">
+          <div class="tab-content">
+            <div
+              *ngIf="
+                assetForm.get('category')?.value === 'computer' ||
+                assetForm.get('category')?.value === 'laptop'
+              "
+              class="form-grid"
+            >
+              <!-- IP Address -->
+              <mat-form-field appearance="outline">
+                <mat-label>IP Address</mat-label>
+                <mat-icon matPrefix>computer</mat-icon>
+                <input
+                  matInput
+                  formControlName="ip_address"
+                  placeholder="e.g., 192.168.1.100"
+                />
+              </mat-form-field>
+
+              <!-- MAC Address -->
+              <mat-form-field appearance="outline">
+                <mat-label>MAC Address</mat-label>
+                <mat-icon matPrefix>settings_ethernet</mat-icon>
+                <input
+                  matInput
+                  formControlName="mac_address"
+                  placeholder="e.g., 00:1B:44:11:3A:B7"
+                />
+              </mat-form-field>
+
+              <!-- Hostname -->
+              <mat-form-field appearance="outline">
+                <mat-label>Hostname</mat-label>
+                <mat-icon matPrefix>dns</mat-icon>
+                <input
+                  matInput
+                  formControlName="hostname"
+                  placeholder="e.g., DESKTOP-001"
+                />
+              </mat-form-field>
+
+              <!-- AnyDesk ID -->
+              <mat-form-field appearance="outline">
+                <mat-label>AnyDesk ID</mat-label>
+                <mat-icon matPrefix>support_agent</mat-icon>
+                <input
+                  matInput
+                  formControlName="anydesk_id"
+                  placeholder="e.g., 123456789"
+                />
+              </mat-form-field>
+            </div>
+
+            <div
+              *ngIf="
+                assetForm.get('category')?.value !== 'computer' &&
+                assetForm.get('category')?.value !== 'laptop'
+              "
+              class="info-message"
+            >
+              <mat-icon>info</mat-icon>
+              <p>
+                Network configuration is only available for Desktop and Laptop
+                assets.
+              </p>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Tab 3: Assignment & Details -->
+        <mat-tab label="Assignment & Details">
+          <div class="tab-content">
+            <div class="form-grid">
+              <!-- Branch -->
+              <mat-form-field appearance="outline">
+                <mat-label>Branch</mat-label>
+                <mat-icon matPrefix>location_city</mat-icon>
+                <mat-select formControlName="branch_id">
+                  <mat-option value="">Select Branch</mat-option>
+                  <mat-option
+                    *ngFor="let branch of branches"
+                    [value]="branch.branch_id"
+                  >
+                    {{ branch.branch_name }}
+                  </mat-option>
+                </mat-select>
+                <mat-error
+                  *ngIf="assetForm.get('branch_id')?.hasError('required')"
+                >
+                  Branch is required
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Assigned To -->
+              <mat-form-field appearance="outline">
+                <mat-label>Assigned To</mat-label>
+                <mat-icon matPrefix>person</mat-icon>
+                <mat-select formControlName="employee_id">
+                  <mat-option value="">
+                    {{
+                      loadingEmployees
+                        ? "Loading employees..."
+                        : assetForm.get("branch_id")?.value
+                          ? "Unassigned"
+                          : "Select Branch First"
+                    }}
+                  </mat-option>
+                  <mat-option
+                    *ngFor="let employee of employees"
+                    [value]="employee.employee_id"
+                  >
+                    {{ employee.first_name }} {{ employee.last_name }}
+                  </mat-option>
+                </mat-select>
+                <mat-hint *ngIf="!assetForm.get('branch_id')?.value">
+                  Please select a branch first
+                </mat-hint>
+                <mat-hint *ngIf="loadingEmployees">
+                  Loading employees from selected branch...
+                </mat-hint>
+                <mat-hint
+                  *ngIf="
+                    assetForm.get('branch_id')?.value &&
+                    !loadingEmployees &&
+                    employees.length === 0
+                  "
+                >
+                  No active employees in this branch
+                </mat-hint>
+              </mat-form-field>
+
+              <!-- Notes -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Notes</mat-label>
+                <mat-icon matPrefix>notes</mat-icon>
+                <textarea
+                  matInput
+                  formControlName="notes"
+                  rows="3"
+                  placeholder="Additional notes..."
+                ></textarea>
+                <mat-error
+                  *ngIf="assetForm.get('notes')?.hasError('maxlength')"
+                >
+                  Maximum 500 characters
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Tab 4: Specifications (for computers/laptops) -->
+        <mat-tab label="Specifications">
+          <div class="tab-content">
+            <div
+              *ngIf="
+                assetForm.get('category')?.value === 'computer' ||
+                assetForm.get('category')?.value === 'laptop'
+              "
+              class="form-grid"
+            >
+              <!-- CPU -->
+              <mat-form-field appearance="outline">
+                <mat-label>CPU/Processor</mat-label>
+                <mat-icon matPrefix>memory</mat-icon>
+                <input
+                  matInput
+                  formControlName="cpu"
+                  placeholder="e.g., Intel Core i5-1145G7"
+                />
+              </mat-form-field>
+
+              <!-- RAM -->
+              <mat-form-field appearance="outline">
+                <mat-label>RAM</mat-label>
+                <mat-icon matPrefix>storage</mat-icon>
+                <input
+                  matInput
+                  formControlName="ram"
+                  placeholder="e.g., 16GB DDR4"
+                />
+              </mat-form-field>
+
+              <!-- Storage -->
+              <mat-form-field appearance="outline">
+                <mat-label>Storage</mat-label>
+                <mat-icon matPrefix>save</mat-icon>
+                <input
+                  matInput
+                  formControlName="storage"
+                  placeholder="e.g., 512GB SSD"
+                />
+              </mat-form-field>
+
+              <!-- Display -->
+              <mat-form-field appearance="outline">
+                <mat-label>Display</mat-label>
+                <mat-icon matPrefix>monitor</mat-icon>
+                <input
+                  matInput
+                  formControlName="display"
+                  placeholder="e.g., 14-inch FHD"
+                />
+              </mat-form-field>
+
+              <!-- Operating System -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Operating System</mat-label>
+                <mat-icon matPrefix>settings</mat-icon>
+                <input
+                  matInput
+                  formControlName="os"
+                  placeholder="e.g., Windows 11 Pro"
+                />
+              </mat-form-field>
+            </div>
+
+            <div
+              *ngIf="
+                assetForm.get('category')?.value !== 'computer' &&
+                assetForm.get('category')?.value !== 'laptop'
+              "
+              class="info-message"
+            >
+              <mat-icon>info</mat-icon>
+              <p>
+                Hardware specifications are only applicable for Desktop and
+                Laptop assets.
+              </p>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+
+    <div *ngIf="loadingData" class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading data...</p>
+    </div>
+  </div>
+
+  <!-- QR Code Section -->
+  <div *ngIf="showQRCode" class="qr-code-section">
+    <div class="success-message">
+      <mat-icon color="primary">check_circle</mat-icon>
+      <h3>Asset Created Successfully!</h3>
+      <p>
+        Asset Tag: <strong>{{ createdAsset?.asset_tag }}</strong>
+      </p>
+    </div>
+
+    <div class="qr-code-container">
+      <h4>QR Code for Asset</h4>
+      <img [src]="qrCodeDataUrl" alt="QR Code" class="qr-code-image" />
+      <p class="qr-code-info">
+        <mat-icon>info</mat-icon>
+        This QR code contains the asset tag and can be used to quickly identify
+        this asset.
+      </p>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <!-- Original Form Actions -->
+  <ng-container *ngIf="!showQRCode">
+    <button mat-button (click)="onCancel()" [disabled]="isSaving">
+      Cancel
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="onSubmit()"
+      [disabled]="isSaving || assetForm.invalid"
+    >
+      <mat-spinner *ngIf="isSaving" diameter="20"></mat-spinner>
+      <span *ngIf="!isSaving">{{ isEditMode ? "Update" : "Create" }}</span>
+    </button>
+  </ng-container>
+
+  <!-- QR Code Actions -->
+  <ng-container *ngIf="showQRCode">
+    <button mat-raised-button color="accent" (click)="downloadQRCode()">
+      <mat-icon>download</mat-icon>
+      Download QR Code
+    </button>
+    <button mat-raised-button color="primary" (click)="closeWithQRCode()">
+      <mat-icon>check</mat-icon>
+      Done
+    </button>
+  </ng-container>
+</mat-dialog-actions>

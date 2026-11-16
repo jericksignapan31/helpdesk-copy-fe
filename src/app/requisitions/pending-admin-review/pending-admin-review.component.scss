@@ -1,0 +1,146 @@
+.pending-admin-review-container {
+  padding: 20px;
+  background: white;
+  min-height: 100vh;
+
+  .header-card {
+    margin-bottom: 20px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    mat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 0;
+
+      .header-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: var(--color-brand-start);
+      }
+
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      mat-card-subtitle {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 14px;
+      }
+    }
+  }
+
+  .content-card {
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+
+    mat-card-content {
+      padding: 20px;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 20px;
+
+    p {
+      color: var(--color-text-secondary);
+      font-size: 16px;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 15px;
+    color: var(--color-text-muted);
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      opacity: 0.5;
+    }
+
+    p {
+      font-size: 16px;
+    }
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+
+    .requisitions-table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th {
+        background-color: var(--color-bg-page);
+        font-weight: 600;
+        text-align: left;
+        padding: 16px;
+        border-bottom: 2px solid var(--color-border);
+      }
+
+      td {
+        padding: 16px;
+        border-bottom: 1px solid var(--color-border-light);
+      }
+
+      tr:hover {
+        background-color: var(--color-bg-subtle);
+      }
+
+      .items-chip {
+        background-color: var(--color-brand-start);
+        color: white;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .pending-admin-review-container {
+    padding: 10px;
+
+    .header-card {
+      margin-bottom: 10px;
+
+      mat-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+
+        mat-card-title {
+          font-size: 20px;
+        }
+      }
+    }
+
+    .table-wrapper {
+      .requisitions-table {
+        th,
+        td {
+          padding: 10px;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}

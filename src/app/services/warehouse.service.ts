@@ -1,0 +1,251 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+import {
+  PartRequisition,
+  CreatePartRequisitionDto,
+  AcknowledgeRequisitionDto,
+  ApproveRequisitionDto,
+  ReturnRequisitionDto,
+  AddCommentDto,
+  ResubmitRequisitionDto,
+  RequisitionReturn,
+  RequisitionComment,
+  RequisitionHistoryItem,
+} from '../models/requisition.model';
+
+export interface CreatePartRequestDto {
+  part_name: string;
+  quantity: number;
+  unit_cost: number;
+  supplier: string;
+  notes?: string;
+}
+
+export interface WarehousePartRequest {
+  request_id: string;
+  requested_by: string;
+  approved_by?: string;
+  part_name: string;
+  quantity: number;
+  unit_cost: number | string;
+  total_cost: number | string;
+  supplier: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  notes?: string;
+  requested_at: string;
+  approved_at?: string;
+  requester?: {
+    employee_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+export interface ApprovePartRequestDto {
+  action: 'approved' | 'rejected';
+  rejection_reason?: string;
+}
+
+export interface RequisitionInventoryItem {
+  item_id: string;
+  requisition_id: string;
+  rf_number: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  supplier?: string;
+  unit_cost?: string | number;
+  total_cost?: string | number;
+  purpose_remarks?: string;
+  requisition_status: 'pending' | 'pending_admin_review' | 'approved' | 'rejected';
+  requested_by_type: 'it' | 'warehouse';
+  requester?: {
+    employee_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class WarehouseService {
+  private readonly API_URL = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  // Warehouse Staff Endpoints
+
+  createPartRequest(data: CreatePartRequestDto): Observable<WarehousePartRequest> {
+    return this.http.post<WarehousePartRequest>(
+      `${this.API_URL}/warehouse/part-requests`,
+      data
+    );
+  }
+
+  getMyPartRequests(): Observable<WarehousePartRequest[]> {
+    return this.http.get<WarehousePartRequest[]>(
+      `${this.API_URL}/warehouse/part-requests/my-requests`
+    );
+  }
+
+  getPartRequestById(id: string): Observable<WarehousePartRequest> {
+    return this.http.get<WarehousePartRequest>(
+      `${this.API_URL}/warehouse/part-requests/${id}`
+    );
+  }
+
+  // Admin Endpoints
+
+  getPendingPartRequests(): Observable<WarehousePartRequest[]> {
+    return this.http.get<WarehousePartRequest[]>(
+      `${this.API_URL}/warehouse/part-requests/pending`
+    );
+  }
+
+  getAllPartRequests(): Observable<WarehousePartRequest[]> {
+    return this.http.get<WarehousePartRequest[]>(
+      `${this.API_URL}/warehouse/part-requests/all`
+    );
+  }
+
+  approvePartRequest(
+    id: string,
+    data: ApprovePartRequestDto
+  ): Observable<WarehousePartRequest> {
+    return this.http.patch<WarehousePartRequest>(
+      `${this.API_URL}/warehouse/part-requests/${id}/approve`,
+      data
+    );
+  }
+
+  // ===== REQUISITION ENDPOINTS =====
+
+  // IT/WAREHOUSE: Create new requisition
+  createRequisition(data: CreatePartRequisitionDto): Observable<PartRequisition> {
+    return this.http.post<PartRequisition>(`${this.API_URL}/requisitions`, data);
+  }
+
+  // IT/WAREHOUSE: Get my requisitions
+  getMyRequisitions(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(`${this.API_URL}/requisitions/my-requisitions`);
+  }
+
+  // WAREHOUSE: Get pending requisitions for review
+  getPendingRequisitions(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(`${this.API_URL}/requisitions/pending`);
+  }
+
+  // ADMIN: Get requisitions pending admin review
+  getPendingAdminReview(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(`${this.API_URL}/requisitions/all`);
+  }
+
+  // Get requisition detail by RF number
+  getRequisitionByRfNumber(rfNumber: string): Observable<PartRequisition> {
+    return this.http.get<PartRequisition>(`${this.API_URL}/requisitions/${rfNumber}`);
+  }
+
+  // WAREHOUSE: Acknowledge requisition
+  acknowledgeRequisition(
+    rfNumber: string,
+    data: AcknowledgeRequisitionDto
+  ): Observable<PartRequisition> {
+    return this.http.patch<PartRequisition>(
+      `${this.API_URL}/requisitions/${rfNumber}/acknowledge`,
+      data
+    );
+  }
+
+  // ADMIN: Approve or reject requisition
+  approveRequisition(
+    rfNumber: string,
+    data: ApproveRequisitionDto
+  ): Observable<PartRequisition> {
+    return this.http.patch<PartRequisition>(
+      `${this.API_URL}/requisitions/${rfNumber}/approve`,
+      data
+    );
+  }
+
+  // Get all approved requisitions
+  getApprovedRequisitions(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(`${this.API_URL}/requisitions/approved`);
+  }
+
+  // Get all rejected requisitions
+  getRejectedRequisitions(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(`${this.API_URL}/requisitions/declined`);
+  }
+
+  // Get requisition inventory (flat list of all items)
+  getRequisitionInventory(): Observable<RequisitionInventoryItem[]> {
+    return this.http.get<RequisitionInventoryItem[]>(`${this.API_URL}/requisitions/inventory`);
+  }
+
+  // ===== NEW: RETURN & RESUBMIT WORKFLOW =====
+
+  // WAREHOUSE: Return requisition with notes
+  returnRequisition(
+    rfNumber: string,
+    data: ReturnRequisitionDto
+  ): Observable<RequisitionReturn> {
+    return this.http.patch<RequisitionReturn>(
+      `${this.API_URL}/requisitions/${rfNumber}/return`,
+      data
+    );
+  }
+
+  // IT: Get pending returns from warehouse
+  getPendingReturns(): Observable<PartRequisition[]> {
+    return this.http.get<PartRequisition[]>(
+      `${this.API_URL}/requisitions/warehouse/pending-returns`
+    );
+  }
+
+  // IT/WAREHOUSE: Add comment to return discussion thread
+  addComment(rfNumber: string, data: AddCommentDto): Observable<RequisitionComment> {
+    return this.http.post<RequisitionComment>(
+      `${this.API_URL}/requisitions/${rfNumber}/comments`,
+      data
+    );
+  }
+
+  // IT/WAREHOUSE: Get comment thread
+  getComments(rfNumber: string): Observable<RequisitionComment[]> {
+    return this.http.get<RequisitionComment[]>(`${this.API_URL}/requisitions/${rfNumber}/comments`);
+  }
+
+  // IT: Resubmit requisition after editing
+  resubmitRequisition(
+    rfNumber: string,
+    data: ResubmitRequisitionDto
+  ): Observable<RequisitionReturn> {
+    return this.http.patch<RequisitionReturn>(
+      `${this.API_URL}/requisitions/${rfNumber}/resubmit`,
+      data
+    );
+  }
+
+  // IT/WAREHOUSE: Get complete requisition history
+  getRequisitionHistory(rfNumber: string): Observable<RequisitionHistoryItem[]> {
+    return this.http.get<RequisitionHistoryItem[]>(
+      `${this.API_URL}/requisitions/${rfNumber}/history`
+    );
+  }
+
+  // ADMIN: Decline requisition
+  declineRequisition(rfNumber: string, declineReason: string): Observable<any> {
+    return this.http.patch<any>(
+      `${this.API_URL}/requisitions/${rfNumber}/decline`,
+      { decline_reason: declineReason }
+    );
+  }
+}

@@ -1,0 +1,87 @@
+<mat-card class="pending-returns-card">
+  <mat-card-header>
+    <mat-card-title>Returns List</mat-card-title>
+    <mat-card-subtitle>View all returned requisitions</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading returns...</p>
+    </div>
+
+    <!-- No Returns -->
+    <div *ngIf="!loading && requisitions.length === 0" class="no-returns">
+      <mat-icon>check_circle</mat-icon>
+      <p>No returns at this time.</p>
+    </div>
+
+    <!-- Returns Table -->
+    <div *ngIf="!loading && requisitions.length > 0" class="table-container">
+      <table mat-table [dataSource]="requisitions" class="returns-table">
+        <!-- RF Number Column -->
+        <ng-container matColumnDef="rf_number">
+          <th mat-header-cell *matHeaderCellDef>RF Number</th>
+          <td mat-cell *matCellDef="let element">
+            <strong>{{ element.rf_number }}</strong>
+          </td>
+        </ng-container>
+
+        <!-- Department Column -->
+        <ng-container matColumnDef="department">
+          <th mat-header-cell *matHeaderCellDef>Department</th>
+          <td mat-cell *matCellDef="let element">{{ getDepartmentName(element.department) }}</td>
+        </ng-container>
+
+        <!-- Items Count Column -->
+        <ng-container matColumnDef="items_count">
+          <th mat-header-cell *matHeaderCellDef>Items</th>
+          <td mat-cell *matCellDef="let element">
+            <mat-chip>{{ getItemsSummary(element) }}</mat-chip>
+          </td>
+        </ng-container>
+
+        <!-- Return Date Column -->
+        <ng-container matColumnDef="returned_date">
+          <th mat-header-cell *matHeaderCellDef>Returned Date</th>
+          <td mat-cell *matCellDef="let element">{{ formatDate(element.updated_at) }}</td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let element">
+            <mat-chip color="warn" selected>{{ element.status | uppercase }}</mat-chip>
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let element">
+            <button
+              mat-icon-button
+              matTooltip="View details"
+              (click)="viewDetails(element)"
+            >
+              <mat-icon>info</mat-icon>
+            </button>
+            <button
+              *ngIf="isIT"
+              mat-icon-button
+              matTooltip="Resubmit requisition"
+              (click)="resubmitRequisition(element)"
+              color="primary"
+            >
+              <mat-icon>refresh</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+  </mat-card-content>
+</mat-card>

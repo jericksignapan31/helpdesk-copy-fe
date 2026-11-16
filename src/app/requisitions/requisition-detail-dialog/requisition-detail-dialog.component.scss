@@ -1,0 +1,88 @@
+.requisition-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--color-bg-page);
+  border-radius: 4px;
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+
+    strong {
+      margin-right: 10px;
+      min-width: 100px;
+    }
+
+    span {
+      flex: 1;
+    }
+  }
+}
+
+.items-section {
+  margin-top: 20px;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+  }
+
+  .items-table {
+    width: 100%;
+    margin-bottom: 20px;
+    border-collapse: collapse;
+
+    th {
+      background: var(--color-bg-hover);
+      padding: 12px 8px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid var(--color-border-subtle);
+    }
+
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    tr:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+
+  .remarks {
+    background: #fff3cd;
+    border-left: 4px solid var(--color-amber);
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+
+    strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+  }
+
+  .total-cost {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 15px;
+    background: var(--color-success-bg);
+    border-radius: 4px;
+
+    span {
+      margin-left: 20px;
+      color: var(--color-success-darker);
+    }
+  }
+}

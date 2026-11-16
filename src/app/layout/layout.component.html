@@ -1,0 +1,165 @@
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav #sidenav mode="side" [opened]="isSidenavOpen" class="sidenav">
+    <div class="sidenav-header">
+      <img src="/logo.png" alt="Logo" class="app-logo" />
+      <h2>IT Help Desk</h2>
+    </div>
+
+    <mat-nav-list>
+      <ng-container *ngFor="let item of visibleMenuItems">
+        <!-- Parent item with children - expansion panel -->
+        <mat-expansion-panel
+          *ngIf="item.children && hasVisibleChildren(item)"
+          class="menu-expansion"
+          [expanded]="expandedMenus[item.label]"
+          (opened)="expandedMenus[item.label] = true"
+          (closed)="expandedMenus[item.label] = false"
+        >
+          <mat-expansion-panel-header class="menu-header">
+            <mat-panel-title class="menu-title">
+              <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+              <span class="menu-label-group">
+                <span class="menu-label">{{ item.label }}</span>
+                <span class="header-badges" *ngIf="item.label === 'Tickets'">
+                  <span
+                    class="menu-count-badge badge-pending"
+                    matTooltip="Pending"
+                    *ngIf="isChildVisible(item, 'Pending') && (pendingTicketsCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                  <span
+                    class="menu-count-badge badge-approved"
+                    matTooltip="Approved"
+                    *ngIf="isChildVisible(item, 'Approved') && (approvedTicketsCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                  <span
+                    class="menu-count-badge badge-progress"
+                    matTooltip="Work in Progress"
+                    *ngIf="isChildVisible(item, 'Work in Progress') && (inProgressTicketsCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                </span>
+                <span class="header-badges" *ngIf="item.label === 'Request Item'">
+                  <span
+                    class="menu-count-badge badge-pending"
+                    matTooltip="Pending Review"
+                    *ngIf="isChildVisible(item, 'Pending Review') && (pendingReviewCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                  <span
+                    class="menu-count-badge badge-progress"
+                    matTooltip="Admin Approval"
+                    *ngIf="isChildVisible(item, 'Admin Approval') && (adminApprovalCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                  <span
+                    class="menu-count-badge badge-approved"
+                    matTooltip="Approved"
+                    *ngIf="isChildVisible(item, 'Approved') && (approvedRequisitionsCount$ | async) as count"
+                    >{{ count }}</span
+                  >
+                </span>
+              </span>
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <a
+            mat-list-item
+            class="nested-item"
+            *ngFor="let child of getVisibleChildren(item)"
+            [routerLink]="child.route"
+            routerLinkActive="active-link"
+          >
+            <mat-icon matListItemIcon>{{ child.icon }}</mat-icon>
+            <span matListItemTitle class="nested-item-title">
+              <span class="nested-item-label">{{ child.label }}</span>
+              <span
+                class="menu-count-badge"
+                [ngClass]="getChildBadgeClass(child.label)"
+                *ngIf="(getChildBadgeCount$(item.label, child.label) | async) as count"
+                >{{ count }}</span
+              >
+            </span>
+          </a>
+        </mat-expansion-panel>
+
+        <!-- Simple item without children -->
+        <a
+          mat-list-item
+          *ngIf="!item.children"
+          [routerLink]="item.route"
+          routerLinkActive="active-link"
+          [matBadge]="item.label === 'Chat' ? (unreadChatCount$ | async) || 0 : null"
+          matBadgeSize="small"
+          matBadgeColor="warn"
+          [matBadgeHidden]="(item.label === 'Chat' ? (unreadChatCount$ | async) || 0 : 0) === 0"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      </ng-container>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary" class="toolbar">
+      <button
+        mat-icon-button
+        (click)="toggleSidenav()"
+        matTooltip="Toggle Sidebar"
+      >
+        <mat-icon>{{ isSidenavOpen ? "menu_open" : "menu" }}</mat-icon>
+      </button>
+      <span class="spacer"></span>
+
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-button">
+        <mat-icon>account_circle</mat-icon>
+        <div class="user-info">
+          <div class="employee-info">
+            <span class="employee-id">{{ currentUser?.email }}</span>
+            <span class="role-badge" [ngClass]="getRoleBadgeClass()">
+              {{ getPosition() }}
+            </span>
+          </div>
+        </div>
+        <mat-icon>arrow_drop_down</mat-icon>
+      </button>
+
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item disabled>
+          <mat-icon>person</mat-icon>
+          <span>{{ currentUser?.email }}</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="navigateToProfile()">
+          <mat-icon>account_circle</mat-icon>
+          <span>Profile</span>
+        </button>
+        <button mat-menu-item (click)="navigateToAccountSettings()">
+          <mat-icon>settings</mat-icon>
+          <span>Account Settings</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <div class="content">
+      <router-outlet></router-outlet>
+    </div>
+
+    <!-- Floating Chat Button -->
+    <button
+      class="floating-chat-button"
+      mat-fab
+      (click)="openChatbot()"
+      matTooltip="Open Chatbot"
+    >
+      <mat-icon>chat</mat-icon>
+    </button>
+  </mat-sidenav-content>
+</mat-sidenav-container>

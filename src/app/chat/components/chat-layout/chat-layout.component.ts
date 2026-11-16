@@ -1,0 +1,690 @@
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subject, forkJoin } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import Swal from 'sweetalert2';
+
+import { ChatApiService } from '../../services/chat-api.service';
+import { ChatSocketService } from '../../services/chat-socket.service';
+import { ChatStoreService } from '../../store/chat-store.service';
+import { AuthService } from '../../../services/auth.service';
+import { UserAccountService } from '../../../services/user-account.service';
+import { EmployeeService } from '../../../services/employee.service';
+import { Conversation, Message, CreateConversationRequest, CreateMessageRequest } from '../../models';
+import { ConversationListComponent } from '../conversation-list/conversation-list.component';
+import { ConversationDetailComponent } from '../conversation-detail/conversation-detail.component';
+
+@Component({
+  selector: 'app-chat-layout',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatProgressSpinnerModule, ConversationListComponent, ConversationDetailComponent],
+  template: `
+    <div class="chat-container">
+      <div class="chat-list-panel">
+        <app-conversation-list
+          [conversations]="(conversations$ | async) || []"
+          [currentConversation]="currentConversation$ | async"
+          [loading]="(loading$ | async) || false"
+          (selectConversation)="onSelectConversation($event)"
+          (deleteConversation)="onDeleteConversation($event)"
+          (createNew)="onCreateNew()"
+        ></app-conversation-list>
+      </div>
+
+      <div class="chat-detail-panel">
+        <app-conversation-detail
+          [conversation]="currentConversation$ | async"
+          [messages]="(currentMessages$ | async) || []"
+          [typingUsers]="(typingUsers$ | async) || []"
+          [currentUserId]="currentUserId"
+          [loadingMessages]="(loadingMessages$ | async) || false"
+          [disabled]="(disabled$ | async) || false"
+          (sendMessage)="onSendMessage($event)"
+          (deleteMessage)="onDeleteMessage($event)"
+          (typing)="onTyping()"
+          (stoppedTyping)="onStoppedTyping()"
+          (deleteConversation)="onConfirmDeleteConversation($event)"
+          (info)="onConversationInfo($event)"
+        ></app-conversation-detail>
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+        width: 100%;
+      }
+
+      .chat-container {
+        display: flex;
+        height: 90vh;
+        width: 100%;
+        gap: 0;
+        background-color: #fff;
+        overflow: hidden;
+      }
+
+      .chat-list-panel {
+        width: 360px;
+        height: 100%;
+        border-right: 1px solid #e5e5e5;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+      }
+
+      .chat-detail-panel {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      @media (max-width: 1024px) {
+        .chat-list-panel {
+          width: 320px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .chat-list-panel {
+          width: 280px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .chat-list-panel {
+          width: 100%;
+          border-right: none;
+          border-bottom: 1px solid #e5e5e5;
+          max-height: 40%;
+        }
+
+        .chat-container {
+          flex-direction: column;
+        }
+      }
+    `,
+  ],
+})
+export class ChatLayoutComponent implements OnInit, OnDestroy {
+  private chatApi = inject(ChatApiService);
+  private chatSocket = inject(ChatSocketService);
+  private chatStore = inject(ChatStoreService);
+  private authService = inject(AuthService);
+  private userAccountService = inject(UserAccountService);
+  private employeeService = inject(EmployeeService);
+  private dialog = inject(MatDialog);
+  private destroy$ = new Subject<void>();
+
+  conversations$ = this.chatStore.conversations$;
+  currentConversation$ = this.chatStore.currentConversation$;
+  currentMessages$ = this.chatStore.currentMessages$;
+  loading$ = this.chatStore.loading$;
+  loadingMessages$ = new Subject<boolean>();
+  disabled$ = new Subject<boolean>();
+  typingUsers$ = new Subject<string[]>();
+
+  currentUserId: string = '';
+  private typingTimeout: any;
+
+  ngOnInit(): void {
+    this.initChat();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.chatSocket.disconnect();
+  }
+
+  private initChat(): void {
+    // Get current user
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      Swal.fire('Error', 'User not authenticated', 'error');
+      return;
+    }
+
+    this.currentUserId = String(currentUser.id);
+
+    // Initialize socket connection
+    const token = localStorage.getItem('token') || '';
+    this.chatSocket
+      .connect(this.currentUserId, token)
+      .then(() => {
+        this.loadConversations();
+        this.setupSocketListeners();
+        this.subscribeToSocketEvents();
+      })
+      .catch((error) => {
+        console.error('Failed to connect socket:', error);
+        Swal.fire('Connection Error', 'Failed to connect to chat', 'error');
+      });
+  }
+
+  private loadConversations(): void {
+    this.chatStore.setLoading(true);
+    this.chatApi
+      .getAllConversationsWithMessages()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (conversations) => {
+          console.log(`✅ Loaded ${conversations.length} conversations with all messages in one call`);
+          this.chatStore.setConversations(conversations);
+          this.chatStore.setLoading(false);
+          
+          // Restore previously selected conversation from localStorage
+          const savedConvId = localStorage.getItem('lastSelectedConversation');
+          if (savedConvId) {
+            const savedConv = conversations.find((c) => c.conversation_id === savedConvId);
+            if (savedConv) {
+              console.log('📌 Restoring conversation from localStorage:', savedConvId);
+              this.onSelectConversation(savedConv);
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error loading conversations:', error);
+          this.chatStore.setLoading(false);
+          this.chatStore.setError('Failed to load conversations');
+        },
+      });
+  }
+
+  private loadMessages(conversationId: string): void {
+    console.log('📥 Loading messages for conversation:', conversationId);
+    (this.loadingMessages$ as Subject<boolean>).next(true);
+    this.chatApi
+      .getMessages(conversationId, 1, 50)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('✅ Messages loaded:', { conversationId, count: response.data?.length || 0 });
+          this.chatStore.setMessages(conversationId, response.data || []);
+          (this.loadingMessages$ as Subject<boolean>).next(false);
+          this.chatSocket.joinConversation(conversationId);
+        },
+        error: (error) => {
+          console.error('❌ Error loading messages:', { conversationId, error });
+          this.chatStore.setMessages(conversationId, []); // Set empty messages on error
+          (this.loadingMessages$ as Subject<boolean>).next(false);
+          Swal.fire('Error', 'Failed to load messages', 'error');
+        },
+      });
+  }
+
+  private setupSocketListeners(): void {
+    // Listen for connection status
+    this.chatSocket.connectionStatus$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((connected) => {
+        (this.disabled$ as Subject<boolean>).next(!connected);
+      });
+
+    // Listen for errors
+    this.chatSocket.error$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((error) => {
+        if (error) {
+          this.chatStore.setError(error);
+        }
+      });
+
+    // Listen for typing users updates
+    this.chatSocket.typingUsers$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((typingUsersMap) => {
+        const currentConv = this.chatStore.getCurrentConversation();
+        if (currentConv) {
+          const typingUsers = typingUsersMap.get(currentConv.conversation_id) || new Set();
+          (this.typingUsers$ as Subject<string[]>).next(Array.from(typingUsers));
+        }
+      });
+
+    // Listen for online users updates
+    this.chatSocket.onlineUsers$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((onlineUsers) => {
+        console.log('[ChatLayout] Online users updated:', onlineUsers);
+      });
+  }
+
+  private subscribeToSocketEvents(): void {
+    // New message received
+    this.chatSocket.messageReceived$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((message) => {
+        if (message) {
+          const currentConv = this.chatStore.getCurrentConversation();
+          if (currentConv && message.conversation_id === currentConv.conversation_id) {
+            this.chatStore.addMessage(message.conversation_id, message);
+          }
+        }
+      });
+
+    // User typing
+    this.chatSocket.userTyping$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((data) => {
+        if (data) {
+          const currentConv = this.chatStore.getCurrentConversation();
+          if (currentConv && data.conversationId === currentConv.conversation_id) {
+            this.chatStore.addTypingUser(data.conversationId, data.userId);
+          }
+        }
+      });
+
+    // User stopped typing
+    this.chatSocket.userStoppedTyping$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((userId) => {
+        if (userId) {
+          const currentConv = this.chatStore.getCurrentConversation();
+          if (currentConv) {
+            this.chatStore.removeTypingUser(currentConv.conversation_id, userId);
+          }
+        }
+      });
+
+    // Message read
+    this.chatSocket.messageRead$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((data) => {
+        if (data) {
+          this.chatStore.updateMessage(data.conversationId, data.messageId, { is_read: true });
+        }
+      });
+
+    // Subscribe to typing users in current conversation
+    this.chatStore.state$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((state) => {
+        if (state.currentConversation) {
+          const typingUsers = state.typingUsers.get(state.currentConversation.conversation_id) || [];
+          (this.typingUsers$ as Subject<string[]>).next(typingUsers);
+        }
+      });
+  }
+
+  onSelectConversation(conversation: Conversation): void {
+    console.log('🔄 Selecting conversation:', { id: conversation.conversation_id, type: conversation.type });
+    
+    // Save selected conversation to localStorage for persistence on refresh
+    localStorage.setItem('lastSelectedConversation', conversation.conversation_id);
+    
+    // Check if messages are already loaded to avoid unnecessary API calls
+    const cachedMessages = this.chatStore.getConversationMessages(conversation.conversation_id);
+    if (cachedMessages && cachedMessages.length > 0) {
+      console.log('✅ Using cached messages, count:', cachedMessages.length);
+      // Set conversation first, messages are already in store
+      this.chatStore.setCurrentConversation(conversation);
+      // Join socket conversation
+      this.chatSocket.joinConversation(conversation.conversation_id);
+    } else {
+      console.log('📡 Loading messages from API...');
+      // Set conversation before loading to update UI
+      this.chatStore.setCurrentConversation(conversation);
+      // Load messages from API
+      this.loadMessages(conversation.conversation_id);
+    }
+  }
+
+  onSendMessage(data: { text: string; attachments?: any[] }): void {
+    console.log('========= onSendMessage CALLED =========');
+    const currentConv = this.chatStore.getCurrentConversation();
+    const currentUser = this.authService.currentUserValue;
+    
+    if (!currentConv) {
+      console.error('ERROR: No conversation selected');
+      Swal.fire('Error', 'No conversation selected. Please select a conversation first.', 'error');
+      return;
+    }
+
+    if (!currentConv.conversation_id) {
+      console.error('ERROR: Conversation ID is missing. Conversation:', currentConv);
+      Swal.fire('Error', 'Conversation ID is missing. Please try selecting the conversation again.', 'error');
+      return;
+    }
+
+    const request: CreateMessageRequest = {
+      conversation_id: currentConv.conversation_id,
+      content: data.text,
+      attachments: data.attachments || undefined,
+    };
+
+    console.log('Creating message request:', { 
+      conversationId: currentConv.conversation_id, 
+      content: data.text,
+      attachments: data.attachments,
+      currentUserId: currentUser?.id,
+      conversationParticipants: currentConv.participant_ids,
+    });
+
+    this.chatApi
+      .sendMessage(request)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (message) => {
+          console.log('✅ Message sent successfully:', message);
+          this.chatStore.addMessage(currentConv.conversation_id, message);
+          this.chatSocket.emitStopTyping(currentConv.conversation_id);
+        },
+        error: (error) => {
+          const errorMsg = Array.isArray(error.error?.message)
+            ? error.error.message.join(', ')
+            : error.error?.message || 'Failed to send message';
+
+          console.error('========= MESSAGE ERROR =========');
+          console.error('Status:', error.status);
+          console.error('Error Details:', error.error);
+          console.error('Request Sent:', JSON.stringify(request, null, 2));
+          console.error('Current User ID:', currentUser?.id);
+          console.error('Conversation Participants:', currentConv.participant_ids);
+          
+          Swal.fire('Error', errorMsg, 'error');
+        },
+      });
+  }
+
+  onDeleteMessage(message: Message): void {
+    const currentConv = this.chatStore.getCurrentConversation();
+    if (!currentConv) return;
+
+    this.chatApi
+      .deleteMessage(message.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.chatStore.deleteMessage(currentConv.conversation_id, message.id);
+          Swal.fire('Success', 'Message deleted', 'success');
+        },
+        error: (error) => {
+          console.error('Error deleting message:', error);
+          Swal.fire('Error', 'Failed to delete message', 'error');
+        },
+      });
+  }
+
+  onDeleteConversation(conversation: Conversation): void {
+    this.chatApi
+      .deleteConversation(conversation.conversation_id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          // Clear localStorage if this was the selected conversation
+          const savedConvId = localStorage.getItem('lastSelectedConversation');
+          if (savedConvId === conversation.conversation_id) {
+            localStorage.removeItem('lastSelectedConversation');
+          }
+          
+          this.chatStore.deleteConversation(conversation.conversation_id);
+          Swal.fire('Success', 'Conversation deleted', 'success');
+          this.loadConversations();
+        },
+        error: (error) => {
+          console.error('Error deleting conversation:', error);
+          Swal.fire('Error', 'Failed to delete conversation', 'error');
+        },
+      });
+  }
+
+  onConfirmDeleteConversation(conversation: Conversation): void {
+    if (confirm('Are you sure you want to delete this conversation?')) {
+      this.onDeleteConversation(conversation);
+    }
+  }
+
+  onTyping(): void {
+    const currentConv = this.chatStore.getCurrentConversation();
+    if (!currentConv) return;
+
+    this.chatSocket.emitTyping(currentConv.conversation_id);
+
+    // Reset typing timeout
+    if (this.typingTimeout) {
+      clearTimeout(this.typingTimeout);
+    }
+
+    this.typingTimeout = setTimeout(() => {
+      this.chatSocket.emitStopTyping(currentConv.conversation_id);
+    }, 3000);
+  }
+
+  onStoppedTyping(): void {
+    const currentConv = this.chatStore.getCurrentConversation();
+    if (!currentConv) return;
+
+    if (this.typingTimeout) {
+      clearTimeout(this.typingTimeout);
+    }
+
+    this.chatSocket.emitStopTyping(currentConv.conversation_id);
+  }
+
+  onCreateNew(): void {
+    // Fetch both users and employees in parallel
+    forkJoin([
+      this.userAccountService.getUserAccounts(),
+      this.employeeService.getEmployees(),
+    ])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ([users, employees]) => {
+          const debugInfo = {
+            userCount: users.length,
+            firstUserKeys: users.length > 0 ? Object.keys(users[0]) : [],
+            firstUser: users.length > 0 ? JSON.stringify(users[0]) : null,
+            currentUserId: this.currentUserId
+          };
+          
+          localStorage.setItem('chatDebug', JSON.stringify(debugInfo, null, 2));
+          console.log('Chat debug info saved to localStorage.chatDebug');
+          console.log('Users from API:', users);
+          console.log('First user keys:', users.length > 0 ? Object.keys(users[0]) : 'No users');
+          
+          // Filter out current user - try multiple ID field names
+          const otherUsers = users.filter((user: any) => {
+            const userId = user.id || user.user_id || user.userId;
+            return String(userId) !== this.currentUserId;
+          });
+
+          if (otherUsers.length === 0) {
+            Swal.fire('Info', 'No other users available', 'info');
+            return;
+          }
+
+          // Create a map of employees by ID for quick lookup
+          const employeeMap = new Map(employees.map((emp) => [String(emp.employee_id), emp]));
+
+          // Create dropdown options with full names
+          const userOptions = otherUsers
+            .map((user: any, index: number) => {
+              // Use username as the unique identifier (guaranteed to exist)
+              // Fallback to numeric index if even username is missing
+              const userId = user.id ?? user.user_id ?? user.userId ?? user.username ?? String(index);
+              let displayName = user.username;
+              
+              console.log(`User[${index}]:`, { 
+                userId, 
+                username: user.username, 
+                id: user.id, 
+                user_id: user.user_id,
+                allKeys: Object.keys(user)
+              });
+              
+              // Validate that userId is not undefined or "undefined" string
+              if (!userId || userId === "undefined") {
+                console.warn(`Skipping user with invalid ID:`, user);
+                return null;
+              }
+              
+              // Try to get employee data
+              const employee = employeeMap.get(String(user.employee_id));
+              if (employee) {
+                const firstName = employee.first_name || '';
+                const lastName = employee.last_name || '';
+                const fullName = `${firstName} ${lastName}`.trim();
+                if (fullName) {
+                  displayName = fullName;
+                }
+              }
+              
+              return `<option value="${userId}">${displayName}</option>`;
+            })
+            .filter(Boolean) // Remove null entries
+            .join('');
+
+          Swal.fire({
+            title: 'Start New Conversation',
+            html: `
+              <label style="display: block; text-align: left; margin-bottom: 8px; font-weight: 500;">
+                Select User:
+              </label>
+              <select id="user" class="swal2-input">
+                <option value="">-- Choose a user --</option>
+                ${userOptions}
+              </select>
+              <label style="display: block; text-align: left; margin-bottom: 8px; font-weight: 500; margin-top: 16px;">
+                Conversation Type:
+              </label>
+              <select id="type" class="swal2-input">
+                <option value="DIRECT">Direct Message</option>
+                <option value="GROUP">Group Chat</option>
+              </select>
+            `,
+            confirmButtonText: 'Create',
+            showCancelButton: true,
+            preConfirm: () => {
+              const userSelect = (document.getElementById('user') as HTMLSelectElement);
+              const typeSelect = (document.getElementById('type') as HTMLSelectElement);
+              
+              const userId = userSelect.value;
+              const type = typeSelect.value;
+              const userDisplayName = userSelect.selectedOptions[0]?.textContent || 'User';
+
+              if (!userId) {
+                Swal.showValidationMessage('Please select a user');
+                return null;
+              }
+
+              return { userId, type, userDisplayName };
+            },
+          }).then((result) => {
+            if (result.isConfirmed) {
+              const { userId, type, userDisplayName } = result.value;
+              this.createDirectConversation(userId, type, userDisplayName);
+            }
+          });
+        },
+        error: (error) => {
+          console.error('Error loading users:', error);
+          Swal.fire('Error', 'Failed to load users', 'error');
+        },
+      });
+  }
+
+  private createDirectConversation(otherUserId: string, type: string, userDisplayName?: string): void {
+    // Try to determine the current user's ID
+    let currentUserId = this.currentUserId;
+    
+    // For DIRECT conversations, ensure we have valid user IDs
+    if (!otherUserId || otherUserId === 'undefined') {
+      Swal.fire('Error', 'Invalid user selected', 'error');
+      return;
+    }
+    
+    if (!currentUserId || currentUserId === 'undefined') {
+      Swal.fire('Error', 'Current user not identified', 'error');
+      return;
+    }
+
+    // Generate conversation name
+    let conversationName = 'Direct Message';
+    if (type === 'DIRECT' && userDisplayName) {
+      conversationName = `Chat with ${userDisplayName}`;
+    }
+
+    // Create the request payload
+    const request: CreateConversationRequest = {
+      type: type as 'DIRECT' | 'GROUP',
+      participant_ids: [currentUserId, otherUserId],
+      name: conversationName,
+    };
+
+    console.log('========= CREATING CONVERSATION =========');
+    console.log('Current User ID:', currentUserId, 'Type:', typeof currentUserId);
+    console.log('Other User ID:', otherUserId, 'Type:', typeof otherUserId);
+    console.log('Conversation Name:', conversationName);
+    console.log('Request Payload:', JSON.stringify(request, null, 2));
+
+    this.chatApi
+      .createConversation(request)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (conversation) => {
+          console.log('✅ Conversation created successfully:', conversation);
+          this.chatStore.addConversation(conversation);
+          this.chatStore.setCurrentConversation(conversation);
+          this.loadMessages(conversation.conversation_id);
+          Swal.fire('Success', 'Conversation created', 'success');
+        },
+        error: (error) => {
+          const errorDebug = {
+            status: error.status,
+            statusText: error.statusText,
+            response: error.error,
+            requestPayload: request
+          };
+          
+          localStorage.setItem('chatErrorDebug', JSON.stringify(errorDebug, null, 2));
+          console.error('========= HTTP ERROR =========');
+          console.error('Status:', error.status);
+          console.error('StatusText:', error.statusText);
+          console.error('Response:', error.error);
+          console.error('Request was:', JSON.stringify(request, null, 2));
+          
+          // Handle error messages - could be array or string
+          let errorMsg = 'Failed to create conversation';
+          if (error.error?.message) {
+            if (Array.isArray(error.error.message)) {
+              errorMsg = error.error.message.join(', ');
+            } else {
+              errorMsg = error.error.message;
+            }
+          } else if (error.error?.error) {
+            errorMsg = error.error.error;
+          } else if (typeof error.error === 'string') {
+            errorMsg = error.error;
+          }
+          
+          console.error('Error message to show:', errorMsg);
+          Swal.fire('Error', errorMsg, 'error');
+        },
+      });
+  }
+
+  onConversationInfo(conversation: Conversation): void {
+    const participantsList = conversation.participants?.map((p) => p.email).join('\n') || 'No participants';
+    Swal.fire({
+      title: 'Conversation Info',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Type:</strong> ${conversation.type}</p>
+          <p><strong>Created:</strong> ${new Date(conversation.created_at).toLocaleDateString()}</p>
+          <p><strong>Participants:</strong></p>
+          <pre>${participantsList}</pre>
+        </div>
+      `,
+      confirmButtonText: 'Close',
+    });
+  }
+}

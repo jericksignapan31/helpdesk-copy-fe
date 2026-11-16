@@ -1,0 +1,154 @@
+.requisitions-list-card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  mat-card-header {
+    background-color: var(--color-bg-page);
+    padding: 1.5rem;
+    margin: -1rem -1rem 1rem -1rem;
+    border-radius: 4px 4px 0 0;
+
+    mat-card-title {
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    mat-card-subtitle {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+  }
+
+  mat-card-content {
+    padding: 1.5rem;
+  }
+
+  .loading-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+
+    p {
+      color: var(--color-text-muted);
+      font-size: 1rem;
+    }
+  }
+
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-darker);
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+
+    mat-icon {
+      color: var(--color-danger-darker);
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+
+    mat-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: var(--color-border-muted);
+      margin-bottom: 1rem;
+    }
+
+    p {
+      color: var(--color-text-secondary);
+      font-size: 1rem;
+      margin: 0;
+
+      &.subtitle {
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+      }
+    }
+  }
+
+  .table-container {
+    overflow-x: auto;
+
+    .requisitions-table {
+      width: 100%;
+
+      th {
+        background-color: var(--color-bg-page);
+        color: var(--color-text-primary);
+        font-weight: 600;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid var(--color-border);
+      }
+
+      td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--color-bg-hover);
+        color: var(--color-text-secondary);
+
+        &.cost-cell {
+          color: var(--color-text-primary);
+        }
+      }
+
+      tr {
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: var(--color-bg-muted);
+        }
+      }
+
+      mat-chip {
+        margin: 0;
+      }
+
+      button {
+        color: var(--color-brand-start);
+
+        &:hover {
+          background-color: rgba(102, 126, 234, 0.1);
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .requisitions-list-card {
+    mat-card-header {
+      padding: 1rem;
+
+      mat-card-title {
+        font-size: 1rem;
+      }
+    }
+
+    mat-card-content {
+      padding: 1rem;
+    }
+
+    .table-container {
+      .requisitions-table {
+        th,
+        td {
+          padding: 0.75rem;
+          font-size: 0.9rem;
+        }
+      }
+    }
+  }
+}

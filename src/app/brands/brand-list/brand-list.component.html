@@ -1,0 +1,128 @@
+<div class="brand-list-container">
+  <div class="header">
+    <h1>Brands</h1>
+    <button mat-raised-button color="primary" (click)="createBrand()">
+      <mat-icon>add</mat-icon>
+      Add Brand
+    </button>
+  </div>
+
+  <mat-card>
+    <mat-card-content>
+      <!-- Search Bar -->
+      <div class="search-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search brands</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            [formControl]="searchControl"
+            placeholder="Search by brand name..."
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            *ngIf="searchControl.value"
+            (click)="searchControl.setValue('')"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+      </div>
+      <div *ngIf="isLoading" class="loading-container">
+        <mat-spinner></mat-spinner>
+      </div>
+
+      <div *ngIf="!isLoading && brands.length === 0" class="empty-state">
+        <mat-icon>inventory_2</mat-icon>
+        <h2>No brands found</h2>
+        <p>Get started by adding your first brand</p>
+        <button mat-raised-button color="primary" (click)="createBrand()">
+          <mat-icon>add</mat-icon>
+          Add Brand
+        </button>
+      </div>
+
+      <div *ngIf="!isLoading && dataSource.data.length > 0" class="table-container">
+        <table mat-table [dataSource]="dataSource" class="brands-table">
+          <!-- Brand Name Column -->
+          <ng-container matColumnDef="brand_name">
+            <th mat-header-cell *matHeaderCellDef>Brand Name</th>
+            <td mat-cell *matCellDef="let brand">
+              <strong>{{ brand.brand_name }}</strong>
+            </td>
+          </ng-container>
+
+          <!-- Description Column -->
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>Description</th>
+            <td mat-cell *matCellDef="let brand">
+              {{ brand.description || "N/A" }}
+            </td>
+          </ng-container>
+
+          <!-- Brand Image URL Column -->
+          <ng-container matColumnDef="brand_image_url">
+            <th mat-header-cell *matHeaderCellDef>Image</th>
+            <td mat-cell *matCellDef="let brand">
+              <div class="image-cell">
+                <img
+                  *ngIf="brand.brand_image_url"
+                  [src]="brand.brand_image_url"
+                  [alt]="brand.brand_name"
+                  class="brand-image"
+                  (error)="onImageError($event)"
+                />
+                <mat-icon *ngIf="!brand.brand_image_url" class="no-image-icon">
+                  image_not_supported
+                </mat-icon>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let brand">
+              <span
+                class="status-badge"
+                [class.status-active]="brand.status"
+                [class.status-inactive]="!brand.status"
+              >
+                {{ brand.status ? "Active" : "Inactive" }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let brand">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="editBrand(brand)"
+                matTooltip="Edit"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="deleteBrand(brand)"
+                matTooltip="Delete"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+      <mat-paginator [pageSizeOptions]="[5, 10, 25, 50]" showFirstLastButtons></mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>
