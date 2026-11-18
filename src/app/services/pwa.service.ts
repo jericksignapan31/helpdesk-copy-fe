@@ -3,6 +3,7 @@ import { SwUpdate } from '@angular/service-worker';
 import { BehaviorSubject, Observable, EMPTY } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -55,6 +56,16 @@ export class PwaService {
    */
   private registerServiceWorker(): void {
     if (!this.isBrowser || !('serviceWorker' in navigator)) {
+      return;
+    }
+
+    if (environment.disableServiceWorker) {
+      navigator.serviceWorker
+        .getRegistration()
+        .then((registration) => registration?.unregister())
+        .catch((error) => {
+          console.warn('Failed to unregister disabled service worker:', error);
+        });
       return;
     }
 

@@ -14,40 +14,10 @@ export interface QuickReply {
 export class QuickReplyService {
   private quickReplies: QuickReply[] = [
     {
-      id: 'auto-cleaning',
-      text: 'Auto Cleaning',
-      icon: 'lock_reset',
-      category: 'help',
-    },
-    {
-      id: 'help-2',
-      text: 'Shell',
-      icon: 'support_agent',
-      category: 'help',
-    },
-    {
-      id: 'report-1',
+      id: 'it-optimizer',
       text: 'IT_Optimizer_Tool',
       icon: 'bug_report',
       category: 'report',
-    },
-    {
-      id: 'report-2',
-      text: 'WPU',
-      icon: 'construction',
-      category: 'report',
-    },
-    {
-      id: 'check-1',
-      text: 'Check ticket status',
-      icon: 'assignment',
-      category: 'check',
-    },
-    {
-      id: 'check-2',
-      text: 'View FAQ',
-      icon: 'help',
-      category: 'check',
     },
   ];
 

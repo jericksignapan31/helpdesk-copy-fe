@@ -163,30 +163,49 @@ export class ChatbotWindowComponent implements OnInit, OnDestroy {
   }
 
   handleSuggestionSelected(suggestion: QuickReply): void {
-      if (suggestion.id !== 'auto-cleaning') {
-        this.sendMessage(suggestion.text);
-        return;
-      }
-
+    if (suggestion.id === 'auto-cleaning') {
       void this.openAutoCleaningCompanion();
+      return;
+    }
+
+    if (suggestion.id === 'it-optimizer') {
+      void this.openSafeOptimizerCompanion();
+      return;
+    }
+
+    this.sendMessage(suggestion.text);
   }
 
   private async openAutoCleaningCompanion(): Promise<void> {
-      const confirmation = await Swal.fire({
-        title: 'Open Windows Auto Cleaning?',
-        html: '<p>This opens the locally installed Windows companion. You can review and select each cleanup action there.</p><p><strong>Recycle Bin cleanup permanently deletes its contents</strong> and requires a separate confirmation in the companion.</p>',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Open companion',
-        cancelButtonText: 'Cancel',
-        focusCancel: true,
-      });
+    const confirmation = await Swal.fire({
+      title: 'Open Windows Auto Cleaning?',
+      html: '<p>This opens the locally installed Windows companion. You can review and select each cleanup action there.</p><p><strong>Recycle Bin cleanup permanently deletes its contents</strong> and requires a separate confirmation in the companion.</p>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Open companion',
+      cancelButtonText: 'Cancel',
+      focusCancel: true,
+    });
 
-      if (!confirmation.isConfirmed) {
-        return;
-      }
-
+    if (confirmation.isConfirmed) {
       window.location.href = 'ithelpdesk-cleaner://run?profile=standard';
+    }
+  }
+
+  private async openSafeOptimizerCompanion(): Promise<void> {
+    const confirmation = await Swal.fire({
+      title: 'Open safe IT maintenance options?',
+      html: '<p>This opens the locally installed companion with its reviewed cleanup checklist.</p><p>It does <strong>not</strong> run <code>IT_Optimizer_Tool.bat</code>, open an administrator shell, or perform system-repair and network-reset commands.</p>',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Open companion',
+      cancelButtonText: 'Cancel',
+      focusCancel: true,
+    });
+
+    if (confirmation.isConfirmed) {
+      window.location.href = 'ithelpdesk-cleaner://run?profile=standard';
+    }
   }
 
   /**
