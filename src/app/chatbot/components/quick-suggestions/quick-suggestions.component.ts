@@ -108,7 +108,7 @@ import { QuickReplyService, QuickReply } from '../../../services/quick-reply.ser
   ],
 })
 export class QuickSuggestionsComponent implements OnInit, OnDestroy {
-  @Output() suggestionSelected = new EventEmitter<string>();
+  @Output() suggestionSelected = new EventEmitter<QuickReply>();
 
   suggestions: QuickReply[] = [];
   private destroy$ = new Subject<void>();
@@ -129,6 +129,6 @@ export class QuickSuggestionsComponent implements OnInit, OnDestroy {
    * Handle suggestion selection
    */
   selectSuggestion(suggestion: QuickReply): void {
-    this.suggestionSelected.emit(suggestion.text);
+    this.suggestionSelected.emit(suggestion);
   }
 }

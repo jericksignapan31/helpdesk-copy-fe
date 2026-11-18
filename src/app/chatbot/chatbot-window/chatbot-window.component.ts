@@ -16,6 +16,7 @@ import { FeedbackService } from '../../services/feedback.service';
 import { TicketService } from '../../services/ticket.service';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../services/auth.service';
+import { QuickReply } from '../../services/quick-reply.service';
 import { Conversation, Message } from '../../models/chat.model';
 import { MessageListComponent } from '../components/message-list/message-list.component';
 import { MessageInputComponent } from '../components/message-input/message-input.component';
@@ -159,6 +160,33 @@ export class ChatbotWindowComponent implements OnInit, OnDestroy {
           console.error('Error sending message:', err);
         },
       });
+  }
+
+  handleSuggestionSelected(suggestion: QuickReply): void {
+      if (suggestion.id !== 'auto-cleaning') {
+        this.sendMessage(suggestion.text);
+        return;
+      }
+
+      void this.openAutoCleaningCompanion();
+  }
+
+  private async openAutoCleaningCompanion(): Promise<void> {
+      const confirmation = await Swal.fire({
+        title: 'Open Windows Auto Cleaning?',
+        html: '<p>This opens the locally installed Windows companion. You can review and select each cleanup action there.</p><p><strong>Recycle Bin cleanup permanently deletes its contents</strong> and requires a separate confirmation in the companion.</p>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Open companion',
+        cancelButtonText: 'Cancel',
+        focusCancel: true,
+      });
+
+      if (!confirmation.isConfirmed) {
+        return;
+      }
+
+      window.location.href = 'ithelpdesk-cleaner://run?profile=standard';
   }
 
   /**

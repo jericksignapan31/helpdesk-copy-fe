@@ -14,7 +14,7 @@ export interface QuickReply {
 export class QuickReplyService {
   private quickReplies: QuickReply[] = [
     {
-      id: 'help-1',
+      id: 'auto-cleaning',
       text: 'Auto Cleaning',
       icon: 'lock_reset',
       category: 'help',
